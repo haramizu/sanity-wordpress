@@ -17,7 +17,6 @@
   "dependencies": {
     "@sanity/icons": "^3.7.4",
     "@sanity/vision": "^4.6.0",
-    "dotenv": "^17.2.1",
     "react": "^19.1",
     "react-dom": "^19.1",
     "sanity": "^4.6.0",
@@ -25,7 +24,6 @@
   },
   "devDependencies": {
     "@sanity/eslint-config-studio": "^5.0.2",
-    "@types/dotenv": "^6.1.1",
     "@types/react": "^19.1",
     "eslint": "^9.28",
     "prettier": "^3.5",
