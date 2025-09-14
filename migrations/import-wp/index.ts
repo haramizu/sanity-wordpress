@@ -1,32 +1,44 @@
 import type {SanityDocumentLike} from 'sanity'
 import {createOrReplace, defineMigration} from 'sanity/migrate'
+import type {WP_REST_API_Post, WP_REST_API_Term, WP_REST_API_User} from 'wp-types'
 
+import {getDataTypes} from './lib/getDataTypes'
+import {transformToPost} from './lib/transformToPost'
 import {wpDataTypeFetch} from './lib/wpDataTypeFetch'
 
-// This will import `post` documents into Sanity from the WordPress API
 export default defineMigration({
-  title: 'Import WP',
+  title: 'Import WP JSON data',
 
   async *migrate() {
-    const wpType = 'posts'
+    const {wpType} = getDataTypes(process.argv)
     let page = 1
     let hasMore = true
 
     while (hasMore) {
       try {
-        const wpData = await wpDataTypeFetch(wpType, page)
+        let wpData = await wpDataTypeFetch(wpType, page)
 
         if (Array.isArray(wpData) && wpData.length) {
           const docs: SanityDocumentLike[] = []
 
-          for (const wpDoc of wpData) {
-            const doc: SanityDocumentLike = {
-              _id: `post-${wpDoc.id}`,
-              _type: 'post',
-              title: wpDoc.title?.rendered.trim(),
+          for (let wpDoc of wpData) {
+            if (wpType === 'posts') {
+              wpDoc = wpDoc as WP_REST_API_Post
+              const doc = await transformToPost(wpDoc)
+              docs.push(doc)
+            } else if (wpType === 'pages') {
+              wpDoc = wpDoc as WP_REST_API_Post
+              // add your *page* transformation function
+            } else if (wpType === 'categories') {
+              wpDoc = wpDoc as WP_REST_API_Term
+              // add your *category* transformation function
+            } else if (wpType === 'tags') {
+              wpDoc = wpDoc as WP_REST_API_Term
+              // add your *tag* transformation function
+            } else if (wpType === 'users') {
+              wpDoc = wpDoc as WP_REST_API_User
+              // add your *author* transformation function
             }
-
-            docs.push(doc)
           }
 
           yield docs.map((doc) => createOrReplace(doc))
