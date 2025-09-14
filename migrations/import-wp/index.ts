@@ -1,58 +1,44 @@
-import {at, defineMigration, setIfMissing, unset} from 'sanity/migrate'
+import type {SanityDocumentLike} from 'sanity'
+import {createOrReplace, defineMigration} from 'sanity/migrate'
 
+import {wpDataTypeFetch} from './lib/wpDataTypeFetch'
+
+// This will import `post` documents into Sanity from the WordPress API
 export default defineMigration({
   title: 'Import WP',
 
-  migrate: {
-    document(doc, context) {
-      // this will be called for every document of the matching type
-      // any patch returned will be applied to the document
-      // you can also return mutations that touches other documents
+  async *migrate() {
+    const wpType = 'posts'
+    let page = 1
+    let hasMore = true
 
-      return at('title', setIfMissing('Default title'))
-    },
-    node(node, path, context) {
-      // this will be called for every node in every document of the matching type
-      // any patch returned will be applied to the document
-      // you can also return mutations that touches other documents
+    while (hasMore) {
+      try {
+        const wpData = await wpDataTypeFetch(wpType, page)
 
-      if (typeof node === 'string' && node === 'deleteme') {
-        return unset()
+        if (Array.isArray(wpData) && wpData.length) {
+          const docs: SanityDocumentLike[] = []
+
+          for (const wpDoc of wpData) {
+            const doc: SanityDocumentLike = {
+              _id: `post-${wpDoc.id}`,
+              _type: 'post',
+              title: wpDoc.title?.rendered.trim(),
+            }
+
+            docs.push(doc)
+          }
+
+          yield docs.map((doc) => createOrReplace(doc))
+          page++
+        } else {
+          hasMore = false
+        }
+      } catch (error) {
+        console.error(`Error fetching data for page ${page}:`, error)
+        // Stop the loop in case of an error
+        hasMore = false
       }
-    },
-    object(node, path, context) {
-      // this will be called for every object node in every document of the matching type
-      // any patch returned will be applied to the document
-      // you can also return mutations that touches other documents
-      if (node._type === 'author') {
-        // make sure all authors objects have a books array
-        return at('books', setIfMissing([]))
-      }
-    },
-    array(node, path, context) {
-      // this will be called for every array node in every document of the matching type
-      // any patch returned will be applied to the document
-      // you can also return mutations that touches other documents
-    },
-    string(node, path, context) {
-      // this will be called for every string node in every document of the matching type
-      // any patch returned will be applied to the document
-      // you can also return mutations that touches other documents
-    },
-    number(node, path, context) {
-      // this will be called for every number node in every document of the matching type
-      // any patch returned will be applied to the document
-      // you can also return mutations that touches other documents
-    },
-    boolean(node, path, context) {
-      // this will be called for every boolean node in every document of the matching type
-      // any patch returned will be applied to the document
-      // you can also return mutations that touches other documents
-    },
-    null(node, path, context) {
-      // this will be called for every null node in every document of the matching type
-      // any patch returned will be applied to the document
-      // you can also return mutations that touches other documents
-    },
+    }
   },
 })
