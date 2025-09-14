@@ -1,3 +1,4 @@
+import {uuid} from '@sanity/uuid'
 import {decode} from 'html-entities'
 import type {WP_REST_API_Post} from 'wp-types'
 
@@ -13,6 +14,40 @@ export async function transformToPost(wpDoc: WP_REST_API_Post): Promise<StagedPo
   }
 
   doc.title = decode(wpDoc.title.rendered).trim()
+
+  if (wpDoc.slug) {
+    doc.slug = {_type: 'slug', current: wpDoc.slug}
+  }
+
+  if (Array.isArray(wpDoc.categories) && wpDoc.categories.length) {
+    doc.categories = wpDoc.categories.map((catId) => ({
+      _key: uuid(),
+      _type: 'reference',
+      _ref: `category-${catId}`,
+    }))
+  }
+
+  if (wpDoc.date) {
+    doc.date = wpDoc.date
+  }
+
+  if (wpDoc.modified) {
+    doc.modified = wpDoc.modified
+  }
+
+  if (wpDoc.status) {
+    doc.status = wpDoc.status as StagedPost['status']
+  }
+
+  doc.sticky = wpDoc.sticky == true
+
+  if (Array.isArray(wpDoc.tags) && wpDoc.tags.length) {
+    doc.tags = wpDoc.tags.map((tagId) => ({
+      _key: uuid(),
+      _type: 'reference',
+      _ref: `tag-${tagId}`,
+    }))
+  }
 
   return doc
 }

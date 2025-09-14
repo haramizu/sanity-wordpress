@@ -1,17 +1,16 @@
-import {decode} from 'html-entities'
 import type {SanityDocumentLike} from 'sanity'
 import {createOrReplace, defineMigration} from 'sanity/migrate'
 import type {WP_REST_API_Post, WP_REST_API_Term, WP_REST_API_User} from 'wp-types'
 
 import {getDataTypes} from './lib/getDataTypes'
+import {transformToPost} from './lib/transformToPost'
 import {wpDataTypeFetch} from './lib/wpDataTypeFetch'
 
-// Allow the migration script to import a specific post type when run
 export default defineMigration({
   title: 'Import WP JSON data',
 
   async *migrate() {
-    const {wpType, sanityType} = getDataTypes(process.argv)
+    const {wpType} = getDataTypes(process.argv)
     let page = 1
     let hasMore = true
 
@@ -23,23 +22,23 @@ export default defineMigration({
           const docs: SanityDocumentLike[] = []
 
           for (let wpDoc of wpData) {
-            const doc: SanityDocumentLike = {
-              _id: `${sanityType}-${wpDoc.id}`,
-              _type: sanityType,
-            }
-
-            if (wpType === 'posts' || wpType === 'pages') {
+            if (wpType === 'posts') {
               wpDoc = wpDoc as WP_REST_API_Post
-              doc.title = decode(wpDoc.title.rendered).trim()
-            } else if (wpType === 'categories' || wpType === 'tags') {
+              const doc = await transformToPost(wpDoc)
+              docs.push(doc)
+            } else if (wpType === 'pages') {
+              wpDoc = wpDoc as WP_REST_API_Post
+              // add your *page* transformation function
+            } else if (wpType === 'categories') {
               wpDoc = wpDoc as WP_REST_API_Term
-              doc.name = decode(wpDoc.name).trim()
+              // add your *category* transformation function
+            } else if (wpType === 'tags') {
+              wpDoc = wpDoc as WP_REST_API_Term
+              // add your *tag* transformation function
             } else if (wpType === 'users') {
               wpDoc = wpDoc as WP_REST_API_User
-              doc.name = decode(wpDoc.name).trim()
+              // add your *author* transformation function
             }
-
-            docs.push(doc)
           }
 
           yield docs.map((doc) => createOrReplace(doc))
