@@ -6,8 +6,7 @@ import type {WP_REST_API_Post} from 'wp-types'
 import type {Post} from '../../../sanity.types'
 import {sanityIdToImageReference} from './sanityIdToImageReference'
 import {sanityUploadFromUrl} from './sanityUploadFromUrl'
-// import {wpImageFetch} from './wpImageFetch'
-import {wpImageFetchXML} from './wpImageFetchXML'
+import {wpImageFetch} from './wpImageFetch'
 
 // Remove these keys because they'll be created by Content Lake
 type StagedPost = Omit<Post, '_createdAt' | '_updatedAt' | '_rev'>
@@ -65,8 +64,7 @@ export async function transformToPost(
       doc.featuredMedia = sanityIdToImageReference(existingImages[wpDoc.featured_media])
     } else {
       // Retrieve image details from WordPress
-      // const metadata = await wpImageFetch(wpDoc.featured_media)
-      const metadata = await wpImageFetchXML(wpDoc.featured_media)
+      const metadata = await wpImageFetch(wpDoc.featured_media)
 
       if (metadata?.source?.url) {
         // Upload to Sanity
