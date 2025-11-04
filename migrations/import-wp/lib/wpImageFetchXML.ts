@@ -1,60 +1,12 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import {parseStringPromise} from 'xml2js'
-import {createClient} from '@sanity/client'
-import {Readable} from 'node:stream'
 
-import type {SanityClient, SanityImageAssetDocument, UploadClientConfig} from '@sanity/client'
+import type {UploadClientConfig} from '@sanity/client'
 
-function createAssetClient(client: SanityClient): SanityClient {
-  // Check if client already has assets capability
-  if (client.assets && typeof client.assets.upload === 'function') {
-    return client
-  }
-
-  const token = process.env.SANITY_STUDIO_TOKEN
-  if (!token) {
-    throw new Error('Missing SANITY_STUDIO_TOKEN environment variable for asset uploads')
-  }
-
-  const {projectId, dataset, apiVersion} = client.config()
-
-  return createClient({
-    projectId,
-    dataset,
-    apiVersion: apiVersion || '2023-05-03',
-    token,
-    useCdn: false,
-  })
-}
-
-// Get WordPress' asset metadata about an image by its ID and upload to Sanity
-export async function wpImageFetchXML(
-  id: number,
-  client?: SanityClient,
-): Promise<{metadata: UploadClientConfig; asset?: SanityImageAssetDocument} | null> {
-  // Try multiple possible locations for the XML file
-  const possiblePaths = [
-    path.resolve(__dirname, './WordPress.assets.xml'),
-    path.resolve(__dirname, '../WordPress.assets.xml'),
-    path.resolve(process.cwd(), 'WordPress.assets.xml'),
-    path.resolve(process.cwd(), 'migrations/import-wp/WordPress.assets.xml'),
-    path.resolve(process.cwd(), 'migrations/import-wp/lib/WordPress.assets.xml'),
-  ]
-
-  let xmlFilePath: string | null = null
-  for (const possiblePath of possiblePaths) {
-    if (fs.existsSync(possiblePath)) {
-      xmlFilePath = possiblePath
-      break
-    }
-  }
-
-  if (!xmlFilePath) {
-    throw new Error(
-      'WordPress.assets.xml file not found. Please ensure it exists in the project directory.',
-    )
-  }
+// Get WordPress' asset metadata about an image by its ID
+export async function wpImageFetchXML(id: number): Promise<UploadClientConfig | null> {
+  const xmlFilePath = path.resolve(__dirname, './WordPress.assets.xml')
 
   // Read the XML file
   const xmlData = fs.readFileSync(xmlFilePath, 'utf-8')
@@ -85,22 +37,11 @@ export async function wpImageFetchXML(
         metadata.title = item['title'][0]
       }
 
-      // If client is provided, upload the image to Sanity
-      if (client && source_url) {
-        try {
-          const {body} = await fetch(source_url)
-          if (body) {
-            const assetClient = createAssetClient(client)
-            const asset = await assetClient.assets.upload('image', Readable.fromWeb(body), metadata)
-            return {metadata, asset}
-          }
-        } catch (error) {
-          console.error(`Failed to upload image from ${source_url}:`, error)
-          return {metadata}
-        }
-      }
+      // if (imageData?.image_meta?.caption) {
+      //   metadata.description = imageData.image_meta.caption
+      // }
 
-      return {metadata}
+      return metadata
     }
   }
   return null
