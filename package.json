@@ -30,12 +30,12 @@
     "@types/react": "^19.1",
     "@types/xml2js": "^0.4.14",
     "@wordpress/block-serialization-default-parser": "^5.30.0",
-    "eslint": "^9.28",
+    "eslint": "^9.39.1",
     "html-entities": "^2.6.0",
     "jsdom": "^26.1.0",
     "p-limit": "^7.1.1",
     "prettier": "^3.5",
-    "typescript": "^5.8",
+    "typescript": "^5.9.3",
     "wp-types": "^4.68.1"
   },
   "prettier": {
