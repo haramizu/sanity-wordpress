@@ -7,10 +7,11 @@ import type {FieldDefinition, SanityClient} from 'sanity'
 
 import type {Post} from '../../../sanity.types'
 import {schemaTypes} from '../../../schemaTypes'
-import {BASE_URL} from '../constants'
+// import {BASE_URL} from '../constants'
 import {sanityIdToImageReference} from './sanityIdToImageReference'
 import {sanityUploadFromUrl} from './sanityUploadFromUrl'
-import {wpImageFetch} from './wpImageFetch'
+// import {wpImageFetch} from './wpImageFetch'
+import { getPostIdByImageUrl, wpImageFetchXML } from './wpImageFetchXML'
 
 const defaultSchema = Schema.compile({types: schemaTypes})
 const blockContentSchema = defaultSchema
@@ -62,31 +63,26 @@ export async function htmlToBlockContent(
 
       // The filename is usually stored as the "slug" in WordPress media documents
       // Filename may be appended with dimensions like "-1024x683", remove with regex
-      const dimensions = /-\d+x\d+$/
-      let slug = (block.url as string)
-        .split('/')
-        .pop()
-        ?.split('.')
-        ?.shift()
-        ?.replace(dimensions, '')
-        .toLocaleLowerCase()
+      const imageUrl = (block.url as string).replace(/-\d+x\d+(?=\.\w+$)/, '').replace(/\?w.*$/, '')
+      const imageId = await getPostIdByImageUrl(imageUrl)
 
-      const imageId = await fetch(`${BASE_URL}/media?slug=${slug}`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => (Array.isArray(data) && data.length ? data[0].id : null))
+      // console.log('block.url as string:', imageUrl)
 
       if (typeof imageId !== 'number' || !imageId) {
         return block
       }
 
       if (imageCache[imageId]) {
+        // console.log('Using cached image for ID:', imageId)
         return {
           _key: block._key,
           ...sanityIdToImageReference(imageCache[imageId]),
         } as Extract<Post['content'], {_type: 'image'}>
       }
 
-      const imageMetadata = await wpImageFetch(imageId)
+      // console.log('imageId:', imageId)
+
+      const imageMetadata = await wpImageFetchXML(imageId)
       if (imageMetadata?.source?.url) {
         const imageDocument = await sanityUploadFromUrl(
           imageMetadata.source.url,

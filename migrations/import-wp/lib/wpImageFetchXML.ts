@@ -4,6 +4,32 @@ import {parseStringPromise} from 'xml2js'
 
 import type {UploadClientConfig} from '@sanity/client'
 
+// Get WordPress post ID by image URL
+export async function getPostIdByImageUrl(imageUrl: string): Promise<number | null> {
+  const xmlFilePath = path.resolve(__dirname, './WordPress.assets.xml')
+
+  // Read the XML file
+  const xmlData = fs.readFileSync(xmlFilePath, 'utf-8')
+
+  // Parse the XML data
+  const parsedXml = await parseStringPromise(xmlData)
+
+  // Get the items from the parsed XML
+  const items = parsedXml.rss.channel[0].item || []
+  for (const item of items) {
+    // Check both guid and attachment_url for matching image URL
+    const guidUrl = item['guid']?.[0]?._
+    const attachmentUrl = item['wp:attachment_url']?.[0]
+    
+    if (guidUrl === imageUrl || attachmentUrl === imageUrl) {
+      const postId = item['wp:post_id']?.[0]
+      return postId ? parseInt(postId, 10) : null
+    }
+  }
+  
+  return null
+}
+
 // Get WordPress' asset metadata about an image by its ID
 export async function wpImageFetchXML(id: number): Promise<UploadClientConfig | null> {
   const xmlFilePath = path.resolve(__dirname, './WordPress.assets.xml')
