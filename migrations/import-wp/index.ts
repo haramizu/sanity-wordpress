@@ -7,6 +7,7 @@ import {getDataTypes} from './lib/getDataTypes'
 import {sanityFetchImages} from './lib/sanityFetchImages'
 import {transformToPost} from './lib/transformToPost'
 import {wpDataTypeFetch} from './lib/wpDataTypeFetch'
+import { transformToPage } from './lib/transformToPage'
 
 const limit = pLimit(5)
 
@@ -39,6 +40,8 @@ export default defineMigration({
                 return doc
               } else if (wpType === 'pages') {
                 wpDoc = wpDoc as WP_REST_API_Post
+                const doc = await transformToPage(wpDoc, client, existingImages)
+                return doc
               } else if (wpType === 'categories') {
                 wpDoc = wpDoc as WP_REST_API_Term
               } else if (wpType === 'tags') {

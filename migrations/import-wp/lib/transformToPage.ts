@@ -1,40 +1,30 @@
-import {uuid} from '@sanity/uuid'
 import {decode} from 'html-entities'
 import type {SanityClient} from 'sanity'
 import type {WP_REST_API_Post} from 'wp-types'
 
-import type {Post} from '../../../sanity.types'
+import type {Page} from '../../../sanity.types'
 import {htmlToBlockContent} from './htmlToBlockContent'
 import {sanityIdToImageReference} from './sanityIdToImageReference'
 import {sanityUploadFromUrl} from './sanityUploadFromUrl'
-// import { wpImageFetch } from './wpImageFetch'
 import {wpImageFetchXML} from './wpImageFetchXML'
 
 // Remove these keys because they'll be created by Content Lake
-type StagedPost = Omit<Post, '_createdAt' | '_updatedAt' | '_rev'>
+type StagedPage = Omit<Page, '_createdAt' | '_updatedAt' | '_rev'>
 
-export async function transformToPost(
+export async function transformToPage(
   wpDoc: WP_REST_API_Post,
   client: SanityClient,
   existingImages: Record<string, string> = {},
-): Promise<StagedPost> {
-  const doc: StagedPost = {
-    _id: `post-${wpDoc.id}`,
-    _type: 'post',
+): Promise<StagedPage> {
+  const doc: StagedPage = {
+    _id: `page-${wpDoc.id}`,
+    _type: 'page',
   }
 
   doc.title = decode(wpDoc.title.rendered).trim()
 
   if (wpDoc.slug) {
     doc.slug = {_type: 'slug', current: wpDoc.slug}
-  }
-
-  if (Array.isArray(wpDoc.categories) && wpDoc.categories.length) {
-    doc.categories = wpDoc.categories.map((catId) => ({
-      _key: uuid(),
-      _type: 'reference',
-      _ref: `category-${catId}`,
-    }))
   }
 
   if (wpDoc.date) {
@@ -46,17 +36,7 @@ export async function transformToPost(
   }
 
   if (wpDoc.status) {
-    doc.status = wpDoc.status as StagedPost['status']
-  }
-
-  doc.sticky = wpDoc.sticky == true
-
-  if (Array.isArray(wpDoc.tags) && wpDoc.tags.length) {
-    doc.tags = wpDoc.tags.map((tagId) => ({
-      _key: uuid(),
-      _type: 'reference',
-      _ref: `tag-${tagId}`,
-    }))
+    doc.status = wpDoc.status as StagedPage['status']
   }
 
   // Document has an image
@@ -66,7 +46,6 @@ export async function transformToPost(
       doc.featuredMedia = sanityIdToImageReference(existingImages[wpDoc.featured_media])
     } else {
       // Retrieve image details from WordPress
-      // const metadata = await wpImageFetch(wpDoc.featured_media)
       const metadata = await wpImageFetchXML(wpDoc.featured_media)
 
       if (metadata?.source?.url) {
@@ -80,7 +59,7 @@ export async function transformToPost(
       }
     }
   }
-  
+
   if (wpDoc.content) {
     doc.content = await htmlToBlockContent(wpDoc.content.rendered, client, existingImages)
   }
